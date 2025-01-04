@@ -179,20 +179,34 @@ WHERE rn = 1;
 # Fields: city_name   month   total_passengers   repeat_passengers   monthly_repeat_passenger_rate (%): 
 # Repeat passenger rate at the city and month level   city_repeat_passenger_rate (%): Overall repeat passenger rate for each city, aggregated across months
 
-WITH CityPassengerMonth AS(
+WITH PassengerMonth AS(
 SELECT city_name, MONTHNAME(ps.month) AS month_name,
 	SUM(total_passengers) AS total_passengers,
-    SUM(repeat_passengers) AS repeat_passengers
+    SUM(repeat_passengers) AS repeat_passengers,
+    SUM(repeat_passengers)/SUM(total_passengers)*100 AS monthly_repeat_passenger_rate
 FROM dim_city c
 JOIN fact_passenger_summary ps
 	USING(city_id)
 GROUP BY city_name , ps.month
+),
+CityPassenger AS(
+SELECT city_name,
+	SUM(total_passengers) AS total_passengers,
+    SUM(repeat_passengers) AS repeat_passengers,
+    SUM(repeat_passengers)/SUM(total_passengers)*100 AS city_repeat_passenger_rate
+FROM dim_city c
+JOIN fact_passenger_summary ps
+	USING(city_id)
+GROUP BY city_name
 )
 SELECT 
-	city_name,
+    pm.city_name,
     month_name,
-    total_passengers,
-    repeat_passengers,
-	CONCAT(ROUND(repeat_passengers/total_passengers*100,2),"%") AS monthly_repeat_passenger_rate
-FROM CityPassengerMonth cm;
+    pm.total_passengers,
+    pm.repeat_passengers,
+    pm.monthly_repeat_passenger_rate,
+    cp.city_repeat_passenger_rate
+FROM PassengerMonth pm
+JOIN CityPassenger cp USING (city_name)
+
 
